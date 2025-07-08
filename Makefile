@@ -14,14 +14,19 @@ VENV_DIR := venv
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 	PLATFORM := linux
+	BINARY_SUFFIX := _linux
 else ifeq ($(UNAME_S),Darwin)
 	PLATFORM := darwin
+	BINARY_SUFFIX := _darwin
 else ifeq ($(findstring CYGWIN,$(UNAME_S)),CYGWIN)
 	PLATFORM := windows
+	BINARY_SUFFIX := _windows.exe
 else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
 	PLATFORM := windows
+	BINARY_SUFFIX := _windows.exe
 else
 	PLATFORM := unknown
+	BINARY_SUFFIX := 
 endif
 
 # デフォルトターゲット
@@ -41,13 +46,9 @@ help:
 # インストール（プラットフォーム判別）
 .PHONY: install
 install:
-ifeq ($(PLATFORM),linux)
-	@echo "Building from source for Linux (no prebuilt binary available yet)..."
-	@$(MAKE) install-build
-else
 	@echo "Building from source for $(PLATFORM)..."
 	@$(MAKE) install-build
-endif
+	@echo "Note: Prebuilt binaries will be available in future releases"
 
 # ソースビルドインストール
 .PHONY: install-build

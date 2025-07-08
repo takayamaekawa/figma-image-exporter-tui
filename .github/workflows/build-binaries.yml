@@ -1,0 +1,135 @@
+name: Build Multi-Platform Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            binary_name: figma_exporter
+          - os: macos-latest
+            platform: darwin
+            binary_name: figma_exporter
+          - os: windows-latest
+            platform: windows
+            binary_name: figma_exporter.exe
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build binary with PyInstaller
+      run: |
+        pyinstaller --onefile --name figma_exporter figma_tui.py
+
+    - name: Create release directory
+      run: |
+        mkdir -p release
+
+    - name: Copy binary (Linux/macOS)
+      if: matrix.platform != 'windows'
+      run: |
+        cp dist/figma_exporter release/figma_exporter_${{ matrix.platform }}
+
+    - name: Copy binary (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        copy dist\figma_exporter.exe release\figma_exporter_windows.exe
+
+    - name: Generate checksums (Linux/macOS)
+      if: matrix.platform != 'windows'
+      run: |
+        cd release
+        sha256sum figma_exporter_${{ matrix.platform }} > figma_exporter_${{ matrix.platform }}.sha256
+
+    - name: Generate checksums (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        cd release
+        certutil -hashfile figma_exporter_windows.exe SHA256 > figma_exporter_windows.sha256
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: figma_exporter_${{ matrix.platform }}
+        path: release/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Prepare release assets
+      run: |
+        mkdir -p release
+        cp artifacts/figma_exporter_linux/figma_exporter_linux* release/
+        cp artifacts/figma_exporter_darwin/figma_exporter_darwin* release/
+        cp artifacts/figma_exporter_windows/figma_exporter_windows* release/
+        
+        # Create combined hash file
+        cd release
+        cat *.sha256 > hashes.sha256
+        
+        # Create latest links (for backward compatibility)
+        cp figma_exporter_linux figma_exporter
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/figma_exporter_linux
+          release/figma_exporter_darwin
+          release/figma_exporter_windows.exe
+          release/figma_exporter_linux.sha256
+          release/figma_exporter_darwin.sha256
+          release/figma_exporter_windows.sha256
+          release/hashes.sha256
+          release/figma_exporter
+        body: |
+          ## Downloads
+          
+          ### Linux
+          - [figma_exporter_linux](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_linux)
+          - [Checksum](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_linux.sha256)
+          
+          ### macOS
+          - [figma_exporter_darwin](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_darwin)
+          - [Checksum](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_darwin.sha256)
+          
+          ### Windows
+          - [figma_exporter_windows.exe](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_windows.exe)
+          - [Checksum](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/figma_exporter_windows.sha256)
+          
+          ### All Checksums
+          - [hashes.sha256](https://github.com/takayamaekawa/figma-image-exporter-tui/releases/download/${{ github.ref_name }}/hashes.sha256)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
