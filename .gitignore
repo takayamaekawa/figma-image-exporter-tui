@@ -1,0 +1,6 @@
+venv/
+localpycs/
+dist/
+assets/
+figma_urls.json
+figma_images.json
