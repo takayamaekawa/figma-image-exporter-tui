@@ -20,7 +20,10 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*Event loop
 warnings.filterwarnings("ignore", category=ResourceWarning, message=".*unclosed.*")
 
 # TUI用ライブラリ
-import curses
+try:
+    import curses
+except ImportError:
+    curses = None
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn
@@ -50,7 +53,7 @@ def getch():
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
             return ch
-        except Exception:
+        except (ImportError, Exception):
             # フォールバック: 通常の入力
             return input().strip()[:1] if input().strip() else '\n'
 
