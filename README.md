@@ -80,9 +80,7 @@ python figma_tui.py
 ### 統合TUIツール集から
 ```bash
 # TUI Tools Collection経由でインストール
-git clone --recursive https://github.com/your-username/tui-tools.git
-cd tui-tools
-./install.sh figma-exporter
+curl -fsSL https://provider.maekawa.dev/install.sh | bash -s figma-exporter
 ```
 
 ## ⚙️ 設定
