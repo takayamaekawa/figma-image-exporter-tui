@@ -4,7 +4,7 @@
 # 設定
 REPO_OWNER := takayamaekawa
 REPO_NAME := figma-image-exporter-tui
-VERSION := v1.0
+VERSION := latest
 BINARY_NAME := figma_exporter
 INSTALL_DIR := /usr/local/bin
 PYTHON := python3
