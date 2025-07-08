@@ -39,6 +39,7 @@ help:
 	@echo "  build        - Build binary using PyInstaller"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  test         - Test the installation"
+	@echo "  release      - Create and push latest tag"
 	@echo "  help         - Show this help"
 	@echo ""
 	@echo "Platform: $(PLATFORM)"
@@ -143,9 +144,19 @@ uninstall:
 		echo "$(BINARY_NAME) is not installed"; \
 	fi
 
-# リリース用バイナリ生成
+# リリース（latestタグの作成とプッシュ）
 .PHONY: release
-release: clean build
+release:
+	@echo "Creating and pushing latest tag..."
+	@git tag -d latest 2>/dev/null || true
+	@git push origin :refs/tags/latest 2>/dev/null || true
+	@git tag -a latest -m "Latest release"
+	@git push origin latest
+	@echo "Latest tag created and pushed successfully!"
+
+# リリース用バイナリ生成
+.PHONY: release-build
+release-build: clean build
 	@echo "Creating release artifacts..."
 	@mkdir -p release
 	@cp dist/$(BINARY_NAME) release/
