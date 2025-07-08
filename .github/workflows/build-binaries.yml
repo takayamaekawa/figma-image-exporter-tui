@@ -58,7 +58,11 @@ jobs:
       if: matrix.platform != 'windows'
       run: |
         cd release
-        sha256sum figma_exporter_${{ matrix.platform }} > figma_exporter_${{ matrix.platform }}.sha256
+        if command -v sha256sum > /dev/null 2>&1; then
+          sha256sum figma_exporter_${{ matrix.platform }} > figma_exporter_${{ matrix.platform }}.sha256
+        else
+          shasum -a 256 figma_exporter_${{ matrix.platform }} > figma_exporter_${{ matrix.platform }}.sha256
+        fi
 
     - name: Generate checksums (Windows)
       if: matrix.platform == 'windows'
