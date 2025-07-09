@@ -47,9 +47,69 @@ help:
 # インストール（プラットフォーム判別）
 .PHONY: install
 install:
+ifeq ($(PLATFORM),linux)
+	@echo "Installing prebuilt binary for Linux..."
+	@$(MAKE) install-binary
+else
 	@echo "Building from source for $(PLATFORM)..."
 	@$(MAKE) install-build
-	@echo "Note: Prebuilt binaries will be available in future releases"
+endif
+
+# Linuxバイナリインストール
+.PHONY: install-binary
+install-binary:
+	@echo "Downloading prebuilt binary from GitHub Releases..."
+	@if ! command -v curl >/dev/null 2>&1; then \
+		echo "Error: curl is required but not installed"; \
+		echo "Please install curl: sudo apt install curl (Ubuntu/Debian) or sudo yum install curl (CentOS/RHEL)"; \
+		exit 1; \
+	fi
+	@if ! command -v sha256sum >/dev/null 2>&1; then \
+		echo "Error: sha256sum is required but not installed"; \
+		exit 1; \
+	fi
+	@tmp_dir=$$(mktemp -d); \
+	binary_path="$$tmp_dir/$(BINARY_NAME)$(BINARY_SUFFIX)"; \
+	checksum_path="$$tmp_dir/hashes.sha256"; \
+	echo "Downloading $(BINARY_NAME)$(BINARY_SUFFIX) $(VERSION)..."; \
+	if ! curl -fsSL "https://github.com/$(REPO_OWNER)/$(REPO_NAME)/releases/download/$(VERSION)/$(BINARY_NAME)$(BINARY_SUFFIX)" -o "$$binary_path"; then \
+		echo "Error: Failed to download binary"; \
+		rm -rf "$$tmp_dir"; \
+		exit 1; \
+	fi; \
+	if ! curl -fsSL "https://github.com/$(REPO_OWNER)/$(REPO_NAME)/releases/download/$(VERSION)/hashes.sha256" -o "$$checksum_path"; then \
+		echo "Error: Failed to download checksum file"; \
+		rm -rf "$$tmp_dir"; \
+		exit 1; \
+	fi; \
+	expected_hash=$$(grep "$(BINARY_NAME)$(BINARY_SUFFIX)" "$$checksum_path" | cut -d' ' -f1); \
+	if [ -z "$$expected_hash" ]; then \
+		echo "Error: Could not find checksum for $(BINARY_NAME)$(BINARY_SUFFIX)"; \
+		rm -rf "$$tmp_dir"; \
+		exit 1; \
+	fi; \
+	actual_hash=$$(sha256sum "$$binary_path" | cut -d' ' -f1); \
+	if [ "$$actual_hash" != "$$expected_hash" ]; then \
+		echo "Error: Checksum mismatch!"; \
+		echo "Expected: $$expected_hash"; \
+		echo "Actual: $$actual_hash"; \
+		rm -rf "$$tmp_dir"; \
+		exit 1; \
+	fi; \
+	echo "Checksum verified"; \
+	chmod +x "$$binary_path"; \
+	if [ ! -d "$(INSTALL_DIR)" ]; then \
+		echo "Creating $(INSTALL_DIR) directory..."; \
+		sudo mkdir -p "$(INSTALL_DIR)"; \
+	fi; \
+	if [ -f "$(INSTALL_DIR)/$(BINARY_NAME)" ]; then \
+		echo "Backing up existing installation..."; \
+		sudo mv "$(INSTALL_DIR)/$(BINARY_NAME)" "$(INSTALL_DIR)/$(BINARY_NAME).backup"; \
+	fi; \
+	echo "Installing $(BINARY_NAME) to $(INSTALL_DIR)..."; \
+	sudo mv "$$binary_path" "$(INSTALL_DIR)/$(BINARY_NAME)"; \
+	rm -rf "$$tmp_dir"; \
+	echo "Installation completed successfully!"
 
 # ソースビルドインストール
 .PHONY: install-build
